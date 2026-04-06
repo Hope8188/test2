@@ -69,6 +69,8 @@ def build_data_summary(df):
 
 
 def get_editorial_copy(data_summary_dict):
+    import time
+
     prompt = f"""You are a data analyst. Output ONLY the tagged fields below. No preamble, no explanation, no markdown, no extra text.
 
 Dataset:
@@ -95,21 +97,44 @@ Rules:
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "model": "google/gemma-3-27b-it:free",
-        "messages": [{"role": "user", "content": prompt}]
-    }
+    # Fallback models in order of preference
+    models = [
+        "google/gemma-3-27b-it:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "mistralai/mistral-7b-instruct:free",
+        "qwen/qwen2.5-72b-instruct:free"
+    ]
 
-    try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload
-        )
-        response.raise_for_status()
-        return response.json()['choices'][0]['message']['content']
-    except Exception as e:
-        return f"[HEADLINE] Generation Failed\n[INSIGHTS] Error connecting to OpenRouter: {str(e)}"
+    last_error = None
+
+    for model in models:
+        for attempt in range(3):  # 3 retries per model with backoff
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            try:
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                if response.status_code == 200:
+                    return response.json()['choices'][0]['message']['content']
+                elif response.status_code == 429:
+                    wait_time = (2 ** attempt)  # 1s, 2s, 4s
+                    time.sleep(wait_time)
+                    last_error = f"429 from {model}"
+                else:
+                    response.raise_for_status()
+            except Exception as e:
+                last_error = str(e)
+                if attempt < 2:
+                    time.sleep(1)
+                continue
+
+    return f"[HEADLINE] Generation Failed\n[INSIGHTS] All models rate-limited. Last error: {last_error}"
 
 
 # --- PDF Export ---
