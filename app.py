@@ -46,7 +46,7 @@ def get_editorial_copy(data_summary):
     }
 
     payload = {
-        "model": "google/gemini-pro-1.5", # High ROI for analysis & narrative
+        "model": "google/gemini-flash-1.5", # High speed & cost efficiency
         "messages": [{"role": "user", "content": prompt}]
     }
 
@@ -59,7 +59,7 @@ def get_editorial_copy(data_summary):
         response.raise_for_status()
         return response.json()['choices'][0]['message']['content']
     except Exception as e:
-        return f"Error connecting to OpenRouter: {str(e)}"
+        return f"[HEADLINE] Generation Failed\n[INSIGHTS] Error connecting to OpenRouter: {str(e)}"
 
 # --- UI Layout ---
 
@@ -75,6 +75,11 @@ with st.sidebar:
         df = pd.read_csv(uploaded_file)
         st.success("Data uploaded successfully.")
         st.info(f"Loaded {len(df)} rows and {len(df.columns)} columns.")
+        
+    st.markdown("---")
+    st.markdown("### Export")
+    if st.button("Print to PDF"):
+        st.info("Use Ctrl+P (Command+P) to print this layout to a high-quality PDF.")
 
 # Main content
 if uploaded_file:
@@ -85,63 +90,70 @@ if uploaded_file:
     # 2. Hero Section 
     st.markdown('<div class="magazine-card">', unsafe_allow_html=True)
     
-    # Trigger LLM Narrative if not already cached
-    if 'editorial' not in st.session_state:
-        with st.spinner("Writing editorial for the magazine..."):
+    if st.button("✨ Draft New Edition (Generate Insights)"):
+        with st.spinner("Analyzing data and writing editorial..."):
             st.session_state.editorial = get_editorial_copy(f"Columns: {column_names} | Statistics: {summary_stats}")
-    
-    editorial = st.session_state.editorial
-    
-    # Parsing LLM output
-    parts = editorial.split('[')
-    content = {}
-    for p in parts:
-        if ']' in p:
-            tag = p.split(']')[0]
-            val = p.split(']')[1].strip()
-            content[tag] = val
+            
+    if 'editorial' in st.session_state:
+        editorial = st.session_state.editorial
+        
+        # Parsing LLM output safely
+        parts = editorial.split('[')
+        content = {}
+        for p in parts:
+            if ']' in p:
+                try:
+                    tag, val = p.split(']', 1)
+                    content[tag.strip()] = val.strip()
+                except ValueError:
+                    pass
 
-    st.title(content.get('HEADLINE', 'The Quarterly Signal'))
-    st.markdown(f'<div class="editorial-text">{content.get("INSIGHTS", "Loading insights...")}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        # Beautiful Editorial Layout
+        st.markdown(f"<h1 style='font-size:3rem; margin-bottom: 0;'>{content.get('HEADLINE', 'The Quarterly Signal')}</h1>", unsafe_allow_html=True)
+        st.markdown("<hr style='border-color: rgba(255,255,255,0.1); margin-top:1rem; margin-bottom: 2rem;'/>", unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="editorial-text">{content.get("INSIGHTS", "Loading insights...")}</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. Data Visuals in Magazine Style
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.write("### The Performance Curve")
-        if len(df.select_dtypes(include=['number']).columns) >= 2:
-            num_cols = df.select_dtypes(include=['number']).columns
-            fig = px.area(df, x=df.index, y=num_cols[0], 
-                         title=f"Evolution of {num_cols[0]}",
-                         template="plotly_dark",
-                         color_discrete_sequence=['#818cf8'])
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Needs numeric columns for charts.")
+        # 3. Data Visuals in Magazine Style
+        st.markdown("### <br>Market Visualization", unsafe_allow_html=True)
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            if len(df.select_dtypes(include=['number']).columns) >= 2:
+                num_cols = df.select_dtypes(include=['number']).columns
+                fig = px.area(df, x=df.index, y=num_cols[0], 
+                             title=f"Evolution of {num_cols[0]}",
+                             template="plotly_dark",
+                             color_discrete_sequence=['#818cf8'])
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Needs numeric columns for charts.")
 
-    with col2:
-        st.write("### Core Stats")
-        for col_name in df.select_dtypes(include=['number']).columns[:3]:
-            avg = df[col_name].mean()
-            st.markdown(f"""
-            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
-                <p style="margin:0; color: #94a3b8; font-size: 0.9rem;">{col_name.upper()} AVG</p>
-                <h3 style="margin:0;">{avg:,.2f}</h3>
-            </div>
-            """, unsafe_allow_html=True)
+        with col2:
+            for col_name in df.select_dtypes(include=['number']).columns[:3]:
+                avg = df[col_name].mean()
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border-left: 4px solid #6366f1;">
+                    <p style="margin:0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Average {col_name}</p>
+                    <h3 style="margin:0; font-size: 2rem; color: #e0e7ff;">{avg:,.2f}</h3>
+                </div>
+                """, unsafe_allow_html=True)
 
-    # 4. Detailed Data Grid
-    with st.expander("Explore Raw Dataset Source"):
-        st.dataframe(df, use_container_width=True)
+        # 4. Detailed Data Grid
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("Explore Raw Dataset Source"):
+            st.dataframe(df, use_container_width=True)
+    else:
+        st.markdown("<p style='color: #94a3b8; font-style: italic;'>Click 'Draft New Edition' to generate your magazine.</p></div>", unsafe_allow_html=True)
 
 else:
     # Landing state
     st.markdown("""
-    <div class="magazine-card">
-        <h2>No Edition Loaded.</h2>
-        <p>Please upload a CSV file in the sidebar to generate the latest magazine edition tailored to your data.</p>
+    <div class="magazine-card" style="text-align: center; padding: 4rem 2rem;">
+        <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">No Edition Loaded.</h2>
+        <p style="color: #94a3b8; font-size: 1.2rem;">Please upload a CSV file in the sidebar to generate the latest magazine edition tailored to your data.</p>
     </div>
     """, unsafe_allow_html=True)
 
