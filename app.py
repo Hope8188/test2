@@ -108,7 +108,7 @@ Rules:
     last_error = None
 
     for model in models:
-        for attempt in range(3):  # 3 retries per model with backoff
+        for attempt in range(5):  # 5 retries per model
             payload = {
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}]
@@ -123,15 +123,15 @@ Rules:
                 if response.status_code == 200:
                     return response.json()['choices'][0]['message']['content']
                 elif response.status_code == 429:
-                    wait_time = (2 ** attempt)  # 1s, 2s, 4s
+                    wait_time = 3 + (attempt * 2)  # 3s, 5s, 7s, 9s, 11s
                     time.sleep(wait_time)
                     last_error = f"429 from {model}"
                 else:
                     response.raise_for_status()
             except Exception as e:
                 last_error = str(e)
-                if attempt < 2:
-                    time.sleep(1)
+                if attempt < 4:
+                    time.sleep(2)
                 continue
 
     return f"[HEADLINE] Generation Failed\n[INSIGHTS] All models rate-limited. Last error: {last_error}"
@@ -221,24 +221,24 @@ with st.sidebar:
     st.markdown("### Export")
 
     if 'markdown_report' in st.session_state:
-        st.download_button(
-            label="Download Report (.md)",
-            data=st.session_state.markdown_report,
-            file_name="gazette_report.md",
-            mime="text/markdown",
-            key="md_download_btn",
-            use_container_width=True
-        )
+        st.markdown(f"""
+        <a href="data:text/markdown;charset=utf-8,{st.session_state.markdown_report.replace(chr(34), '&quot;').replace(chr(60), '&lt;').replace(chr(62), '&gt;').replace('\\n', '%0A').replace(' ', '%20')}" 
+           download="gazette_report.md" 
+           style="display:block; text-align:center; background:#3b82f6; color:white; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:600; margin:8px 0; width:100%; box-sizing:border-box;">
+           Download Report (.md)
+        </a>
+        """, unsafe_allow_html=True)
 
     if 'pdf_report' in st.session_state:
-        st.download_button(
-            label="Download Report (.pdf)",
-            data=st.session_state.pdf_report,
-            file_name="gazette_report.pdf",
-            mime="application/pdf",
-            key="pdf_download_btn",
-            use_container_width=True
-        )
+        import base64
+        pdf_b64 = base64.b64encode(st.session_state.pdf_report).decode()
+        st.markdown(f"""
+        <a href="data:application/pdf;base64,{pdf_b64}" 
+           download="gazette_report.pdf" 
+           style="display:block; text-align:center; background:#10b981; color:white; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:600; margin:8px 0; width:100%; box-sizing:border-box;">
+           Download Report (.pdf)
+        </a>
+        """, unsafe_allow_html=True)
 
 
 # --- Main Content ---
