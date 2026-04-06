@@ -54,7 +54,7 @@ def get_editorial_copy(data_summary):
     }
 
     payload = {
-        "model": "google/gemini-1.5-flash", # Fixed 404 string
+        "model": "google/gemini-2.5-flash",
         "messages": [{"role": "user", "content": prompt}]
     }
 
