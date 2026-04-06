@@ -1,0 +1,8 @@
+.venv
+.env.local
+__pycache__
+*.pyc
+.streamlit
+test.pdf
+node_modules
+.next
