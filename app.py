@@ -54,7 +54,7 @@ def get_editorial_copy(data_summary):
     }
 
     payload = {
-        "model": "google/gemini-2.5-flash",
+        "model": "stepfun/step-3.5-flash:free",
         "messages": [{"role": "user", "content": prompt}]
     }
 
