@@ -25,17 +25,21 @@ SITE_NAME = "Gazette"
 # --- Models & API Logic ---
 def get_editorial_copy(data_summary):
     prompt = f"""
-    You are a world-class business magazine editor. 
-    Transform the following raw data summary into a high-end editorial for a digital magazine.
+    You are a world-class magazine editor and senior data analyst. 
+    Analyze the following raw data summary and transform it into a captivating, high-end editorial for a digital magazine.
     Data Summary: {data_summary}
 
+    Context: I do not know what this data is about. It could be sales, healthcare, engineering metrics, or anything else.
+    Your mission is to look at the columns and statistics, deduce the core theme, and tell the most compelling 'story' hidden in these numbers.
+
     Structure:
-    1. A dramatic headline for the 'Cover Story'.
-    2. An 'Executive Insights' narrative (approx 200 words) using premium business English.
-    3. Three 'Key Growth Pillars' bullets with a short descriptive sentence for each.
+    1. A dramatic, relevant headline for the 'Cover Story'.
+    2. An 'Executive Insights' narrative (approx 200 words) using premium, authoritative language.
+    3. Three 'Key Discoveries' bullets with a short descriptive sentence for each.
     4. A final 'Editor's Outlook' summarizing future direction.
     
     Maintain a polished, analytical, yet captivating tone. Do not use markdown headers, just plain text with labels like [HEADLINE], [INSIGHTS], etc.
+    If the data is completely unrecognizable, narrate the structure of the data itself creatively.
     """
     
     headers = {
@@ -78,8 +82,14 @@ with st.sidebar:
         
     st.markdown("---")
     st.markdown("### Export")
-    if st.button("Print to PDF"):
-        st.info("Use Ctrl+P (Command+P) to print this layout to a high-quality PDF.")
+    if st.button("Download as PDF", key="export_pdf_btn"):
+        # Inject JavaScript to trigger the native browser print/save-as-pdf dialog instantly
+        print_js = """
+        <script>
+            window.print();
+        </script>
+        """
+        st.components.v1.html(print_js, height=0, width=0)
 
 # Main content
 if uploaded_file:
