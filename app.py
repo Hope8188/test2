@@ -18,7 +18,11 @@ def load_css(file_name):
 load_css('style.css')
 
 # --- Constants ---
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") 
+try:
+    OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY"))
+except Exception:
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
 SITE_URL = "http://localhost:8501" 
 SITE_NAME = "Gazette"
 
@@ -130,30 +134,51 @@ if uploaded_file:
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            if len(df.select_dtypes(include=['number']).columns) >= 2:
-                num_cols = df.select_dtypes(include=['number']).columns
-                fig = px.area(df, x=df.index, y=num_cols[0], 
-                             title=f"{num_cols[0]} Trajectory",
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) >= 2:
+                fig = px.area(df, x=df.index, y=numeric_cols[0], 
+                             title=f"{numeric_cols[0]} Trajectory",
+                             template="plotly_dark",
+                             color_discrete_sequence=['#3b82f6'])
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter", color="#cbd5e1"))
+                st.plotly_chart(fig, use_container_width=True)
+            elif len(df.columns) > 0:
+                cat_col = df.columns[0]
+                counts = df[cat_col].value_counts().reset_index()
+                counts.columns = [cat_col, 'Count']
+                fig = px.bar(counts.head(10), x=cat_col, y='Count',
+                             title=f"Distribution of {cat_col}",
                              template="plotly_dark",
                              color_discrete_sequence=['#3b82f6'])
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter", color="#cbd5e1"))
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("Visualizations expect at least 2 numeric columns.")
+                st.info("No data available for visualization.")
 
         with col2:
-            for col_name in df.select_dtypes(include=['number']).columns[:3]:
-                avg = df[col_name].mean()
+            numeric_cols = df.select_dtypes(include=['number']).columns
+            if len(numeric_cols) > 0:
+                for col_name in numeric_cols[:3]:
+                    avg = df[col_name].mean()
+                    st.markdown(f"""
+                    <div style="background: #1e293b; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #3b82f6;">
+                        <p style="margin:0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 600;">Avg {col_name}</p>
+                        <h3 style="margin:0; margin-top: 0.5rem; font-size: 1.8rem; color: #ffffff;">{avg:,.2f}</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+            elif len(df.columns) > 0:
+                cat_col = df.columns[0]
+                uniques = df[cat_col].nunique()
                 st.markdown(f"""
                 <div style="background: #1e293b; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #3b82f6;">
-                    <p style="margin:0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 600;">Avg {col_name}</p>
-                    <h3 style="margin:0; margin-top: 0.5rem; font-size: 1.8rem; color: #ffffff;">{avg:,.2f}</h3>
+                    <p style="margin:0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; font-weight: 600;">Unique {cat_col}</p>
+                    <h3 style="margin:0; margin-top: 0.5rem; font-size: 1.8rem; color: #ffffff;">{uniques}</h3>
                 </div>
                 """, unsafe_allow_html=True)
 
         # 4. Detailed Data Grid
         st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("Dataset Reference Matrix"):
+        with st.expander("Dataset View"):
             st.dataframe(df, use_container_width=True)
     else:
         st.markdown("<p style='color: #64748b; font-style: italic;'>Awaiting compilation command.</p></div>", unsafe_allow_html=True)

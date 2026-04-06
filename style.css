@@ -9,14 +9,14 @@
     --text-muted: #94a3b8;
 }
 
-body {
+body, .stApp {
     background-color: var(--background);
     color: var(--text);
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Inter', sans-serif;
 }
 
-h1, h2, h3, h4, p, span, div {
-    font-family: 'Inter', sans-serif !important;
+h1, h2, h3, h4, p, div {
+    font-family: 'Inter', sans-serif;
 }
 
 .stApp {
