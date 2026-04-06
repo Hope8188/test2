@@ -5,6 +5,7 @@ import json
 import plotly.express as px
 import os
 import io
+from fpdf import FPDF
 
 # --- Configuration & Styling ---
 st.set_page_config(page_title="Gazette - Data Magazine", layout="wide")
@@ -68,21 +69,24 @@ def build_data_summary(df):
 
 
 def get_editorial_copy(data_summary_dict):
-    prompt = f"""You are a senior data analyst writing a brief for an internal intelligence report.
+    prompt = f"""You are a data analyst. Output ONLY the tagged fields below. No preamble, no explanation, no markdown, no extra text.
 
-Dataset snapshot:
+Dataset:
 {json.dumps(data_summary_dict, indent=2)}
 
-Deliver a concise, fact-driven report. No metaphors, no dramatic language. Stick to what the data actually shows.
+Rules:
+- Every field is mandatory.
+- INSIGHTS: max 60 words, facts only, no metaphors.
+- Each DISCOVERY: one crisp sentence, cite a number.
+- OUTLOOK: one sentence.
+- Do NOT output anything before [HEADLINE] or after [OUTLOOK].
 
-Output format (use these exact labels, no markdown):
-[HEADLINE] One sharp sentence summarizing the dataset's core fact.
-[INSIGHTS] Max 80 words. What the data is, what stands out numerically, what patterns exist. Be specific.
-[DISCOVERY_1] One specific statistical finding.
-[DISCOVERY_2] A second concrete finding.
-[DISCOVERY_3] A third finding or anomaly.
-[OUTLOOK] One sentence on what this data set enables or implies for further analysis.
-"""
+[HEADLINE] <one sentence>
+[INSIGHTS] <max 60 words>
+[DISCOVERY_1] <one sentence with a number>
+[DISCOVERY_2] <one sentence with a number>
+[DISCOVERY_3] <one sentence with a number>
+[OUTLOOK] <one sentence>"""
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -128,13 +132,93 @@ def build_markdown_report(headline, insights, discoveries, outlook, df, is_sampl
         "",
         "---",
         "",
-        f"**Dataset:** {len(df)} rows × {len(df.columns)} columns" + (" *(sampled)*" if is_sampled else ""),
+        f"**Dataset:** {len(df)} rows x {len(df.columns)} columns" + (" *(sampled)*" if is_sampled else ""),
         "",
         "### Data Preview",
         "",
-        df.head(20).to_markdown(index=False)
+        df.head(20).to_csv(index=False)
     ]
     return "\n".join(lines)
+
+
+# --- PDF Export ---
+def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Title
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_text_color(15, 23, 42)
+    pdf.multi_cell(0, 10, headline, align="L")
+    pdf.ln(4)
+
+    pdf.set_draw_color(59, 130, 246)
+    pdf.set_line_width(0.8)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+
+    # Insights
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 8, "Executive Insights", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(71, 85, 105)
+    pdf.multi_cell(0, 6, insights)
+    pdf.ln(4)
+
+    # Discoveries
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 8, "Key Discoveries", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(71, 85, 105)
+    for d in discoveries:
+        if d:
+            pdf.multi_cell(0, 6, f"  - {d}")
+    pdf.ln(4)
+
+    # Outlook
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 8, "Outlook", ln=True)
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.set_text_color(100, 116, 139)
+    pdf.multi_cell(0, 6, outlook)
+    pdf.ln(6)
+
+    # Dataset metadata
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(148, 163, 184)
+    sampled_note = " (sampled)" if is_sampled else ""
+    pdf.cell(0, 6, f"Dataset: {len(df)} rows x {len(df.columns)} columns{sampled_note}", ln=True)
+    pdf.ln(4)
+
+    # Data preview table
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 7, "Data Preview (first 20 rows)", ln=True)
+    pdf.set_font("Helvetica", "", 8)
+    preview = df.head(20)
+    col_width = min(190 / max(len(preview.columns), 1), 40)
+
+    # Header row
+    pdf.set_fill_color(30, 41, 59)
+    pdf.set_text_color(248, 250, 252)
+    for col in preview.columns:
+        pdf.cell(col_width, 6, str(col)[:18], border=0, fill=True)
+    pdf.ln()
+
+    # Data rows
+    pdf.set_fill_color(248, 250, 252)
+    pdf.set_text_color(51, 65, 85)
+    for i, row in preview.iterrows():
+        fill = (i % 2 == 0)
+        for val in row:
+            pdf.cell(col_width, 5, str(val)[:18], border=0, fill=fill)
+        pdf.ln()
+
+    return bytes(pdf.output())
 
 
 # --- UI Layout ---
@@ -169,9 +253,15 @@ with st.sidebar:
             key="md_download_btn"
         )
 
-    # Print hint
-    if st.button("Print to PDF", key="print_pdf_btn"):
-        st.sidebar.info("Press Ctrl+P / Cmd+P — the report is print-optimized.")
+    # Real PDF download
+    if 'pdf_report' in st.session_state:
+        st.download_button(
+            label="Download Report (.pdf)",
+            data=st.session_state.pdf_report,
+            file_name="gazette_report.pdf",
+            mime="application/pdf",
+            key="pdf_download_btn"
+        )
 
 
 # --- Main Content ---
@@ -209,8 +299,11 @@ if 'df' in st.session_state:
         ]
         outlook = content.get('OUTLOOK', '')
 
-        # Build and cache markdown report
+        # Build and cache markdown + PDF reports
         st.session_state.markdown_report = build_markdown_report(
+            headline, insights, discoveries, outlook, df, is_sampled
+        )
+        st.session_state.pdf_report = build_pdf_report(
             headline, insights, discoveries, outlook, df, is_sampled
         )
 
