@@ -54,7 +54,7 @@ def get_editorial_copy(data_summary):
     }
 
     payload = {
-        "model": "stepfun/step-3.5-flash:free",
+        "model": "qwen/qwen3.6-plus:free",
         "messages": [{"role": "user", "content": prompt}]
     }
 
