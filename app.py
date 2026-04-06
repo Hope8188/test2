@@ -97,12 +97,12 @@ Rules:
         "Content-Type": "application/json"
     }
 
-    # Fallback models in order of preference
+    # Fallback models in order of preference (valid free models on OpenRouter)
     models = [
-        "google/gemma-3-27b-it:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
+        "google/gemma-2-9b-it:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
         "mistralai/mistral-7b-instruct:free",
-        "qwen/qwen2.5-72b-instruct:free"
+        "nousresearch/hermes-3-llama-3.1-405b:free"
     ]
 
     last_error = None
@@ -226,18 +226,19 @@ with st.sidebar:
             data=st.session_state.markdown_report,
             file_name="gazette_report.md",
             mime="text/markdown",
-            key="md_download_btn"
+            key="md_download_btn",
+            use_container_width=True
         )
 
     if 'pdf_report' in st.session_state:
-        if st.button("Download Report (.pdf)", key="pdf_download_btn"):
-            st.download_button(
-                label="Click to Save PDF",
-                data=st.session_state.pdf_report,
-                file_name="gazette_report.pdf",
-                mime="application/pdf",
-                key="pdf_save_btn"
-            )
+        st.download_button(
+            label="Download Report (.pdf)",
+            data=st.session_state.pdf_report,
+            file_name="gazette_report.pdf",
+            mime="application/pdf",
+            key="pdf_download_btn",
+            use_container_width=True
+        )
 
 
 # --- Main Content ---
