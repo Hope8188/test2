@@ -96,7 +96,7 @@ Rules:
     }
 
     payload = {
-        "model": "qwen/qwen3.6-plus:free",
+        "model": "google/gemma-3-27b-it:free",
         "messages": [{"role": "user", "content": prompt}]
     }
 
@@ -112,39 +112,13 @@ Rules:
         return f"[HEADLINE] Generation Failed\n[INSIGHTS] Error connecting to OpenRouter: {str(e)}"
 
 
-# --- Markdown Export ---
-def build_markdown_report(headline, insights, discoveries, outlook, df, is_sampled):
-    lines = [
-        f"# {headline}",
-        "",
-        "## Executive Insights",
-        insights,
-        "",
-        "## Key Discoveries",
-    ]
-    for d in discoveries:
-        if d:
-            lines.append(f"- {d}")
-    lines += [
-        "",
-        "## Outlook",
-        outlook,
-        "",
-        "---",
-        "",
-        f"**Dataset:** {len(df)} rows x {len(df.columns)} columns" + (" *(sampled)*" if is_sampled else ""),
-        "",
-        "### Data Preview",
-        "",
-        df.head(20).to_markdown(index=False)
-    ]
-    return "\n".join(lines)
-
-
 # --- PDF Export ---
 def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     def clean(text):
-        return str(text).encode("latin-1", "replace").decode("latin-1")
+        try:
+            return str(text).encode("latin-1", "replace").decode("latin-1")
+        except Exception:
+            return "Content conversion error"
 
     pdf = FPDF()
     pdf.add_page()
@@ -152,11 +126,11 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
 
     pdf.set_font("Helvetica", "B", 24)
     pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 20, "GAZETTE", ln=True, align="C")
+    pdf.cell(0, 20, "GAZETTE", new_x="LMARGIN", new_y="NEXT", align="C")
     
     pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(59, 130, 246)
-    pdf.multi_cell(0, 10, clean(headline), align="L")
+    pdf.multi_cell(190, 10, clean(headline), align="L")
     pdf.ln(5)
 
     pdf.set_draw_color(226, 232, 240)
@@ -166,34 +140,34 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(71, 85, 105)
-    pdf.cell(0, 8, "EXECUTIVE INSIGHTS", ln=True)
+    pdf.cell(0, 8, "EXECUTIVE INSIGHTS", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(30, 41, 59)
-    pdf.multi_cell(0, 6, clean(insights))
+    pdf.multi_cell(190, 6, clean(insights))
     pdf.ln(8)
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(71, 85, 105)
-    pdf.cell(0, 8, "STATISTICAL DISCOVERIES", ln=True)
+    pdf.cell(0, 8, "STATISTICAL DISCOVERIES", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(30, 41, 59)
     for d in discoveries:
         if d:
-            pdf.multi_cell(0, 7, f"  - {clean(d)}")
+            pdf.multi_cell(190, 7, f"  - {clean(d)}")
     pdf.ln(6)
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(71, 85, 105)
-    pdf.cell(0, 8, "STRATEGIC OUTLOOK", ln=True)
+    pdf.cell(0, 8, "STRATEGIC OUTLOOK", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "I", 10)
     pdf.set_text_color(100, 116, 139)
-    pdf.multi_cell(0, 6, clean(outlook))
+    pdf.multi_cell(190, 6, clean(outlook))
     pdf.ln(10)
 
     pdf.set_font("Helvetica", "", 8)
     pdf.set_text_color(148, 163, 184)
     sampled_note = " (sampled for performance)" if is_sampled else ""
-    pdf.cell(0, 6, f"Infrastructure: {len(df)} rows x {len(df.columns)} columns {sampled_note}", ln=True, align="R")
+    pdf.cell(0, 6, f"Infrastructure: {len(df)} rows x {len(df.columns)} columns {sampled_note}", new_x="LMARGIN", new_y="NEXT", align="R")
     
     # fpdf2: output() returns bytes/bytearray directly.
     return pdf.output()
@@ -231,13 +205,14 @@ with st.sidebar:
         )
 
     if 'pdf_report' in st.session_state:
-        st.download_button(
-            label="Download Report (.pdf)",
-            data=st.session_state.pdf_report,
-            file_name="gazette_report.pdf",
-            mime="application/pdf",
-            key="pdf_download_btn"
-        )
+        if st.button("Download Report (.pdf)", key="pdf_download_btn"):
+            st.download_button(
+                label="Click to Save PDF",
+                data=st.session_state.pdf_report,
+                file_name="gazette_report.pdf",
+                mime="application/pdf",
+                key="pdf_save_btn"
+            )
 
 
 # --- Main Content ---
@@ -282,9 +257,6 @@ if 'df' in st.session_state:
              insights = editorial.strip()[:500] + "..." if len(editorial) > 500 else editorial.strip()
 
         # Cache reports
-        st.session_state.markdown_report = build_markdown_report(
-            headline, insights, discoveries, outlook, df, is_sampled
-        )
         st.session_state.pdf_report = build_pdf_report(
             headline, insights, discoveries, outlook, df, is_sampled
         )
