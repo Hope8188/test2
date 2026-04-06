@@ -5,3 +5,5 @@ openai
 python-dotenv
 plotly
 altair
+fpdf2
+tabulate

@@ -136,7 +136,7 @@ def build_markdown_report(headline, insights, discoveries, outlook, df, is_sampl
         "",
         "### Data Preview",
         "",
-        df.head(20).to_csv(index=False)
+        df.head(20).to_markdown(index=False)
     ]
     return "\n".join(lines)
 
@@ -195,7 +195,8 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     sampled_note = " (sampled for performance)" if is_sampled else ""
     pdf.cell(0, 6, f"Infrastructure: {len(df)} rows x {len(df.columns)} columns {sampled_note}", ln=True, align="R")
     
-    return bytes(pdf.output())
+    # fpdf2: output() returns bytes/bytearray directly.
+    return pdf.output()
 
 
 # --- UI Layout ---
@@ -246,7 +247,7 @@ if 'df' in st.session_state:
 
     st.markdown('<div class="magazine-card">', unsafe_allow_html=True)
 
-    if st.button("Generate Edition"):
+    if st.button("Generate Edition", key="generate_btn"):
         with st.spinner("Analyzing data..."):
             summary_dict = build_data_summary(df)
             st.session_state.editorial = get_editorial_copy(summary_dict)
@@ -254,6 +255,7 @@ if 'df' in st.session_state:
     if 'editorial' in st.session_state:
         editorial = st.session_state.editorial
 
+        # Robust parsing for tags
         parts = editorial.split('[')
         content = {}
         for p in parts:
@@ -263,7 +265,8 @@ if 'df' in st.session_state:
                     content[tag.strip()] = val.strip()
                 except ValueError:
                     pass
-
+        
+        # If no tags were found, use fallback or try a search
         headline = content.get('HEADLINE', 'Data Report')
         insights = content.get('INSIGHTS', '')
         discoveries = [
@@ -272,6 +275,11 @@ if 'df' in st.session_state:
             content.get('DISCOVERY_3', ''),
         ]
         outlook = content.get('OUTLOOK', '')
+
+        # If it was truly "chatty" and didn't use tags, try to scrape it
+        if not insights and len(editorial) > 100:
+             # Fallback: assume first paragraph is insights if tags are missing
+             insights = editorial.strip()[:500] + "..." if len(editorial) > 500 else editorial.strip()
 
         # Cache reports
         st.session_state.markdown_report = build_markdown_report(
@@ -308,7 +316,7 @@ if 'df' in st.session_state:
                              template="plotly_dark",
                              color_discrete_sequence=['#3b82f6'])
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter", color="#cbd5e1"))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             else:
                 cat_col = df.columns[0]
                 counts = df[cat_col].value_counts().reset_index()
@@ -318,7 +326,7 @@ if 'df' in st.session_state:
                              template="plotly_dark",
                              color_discrete_sequence=['#3b82f6'])
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter", color="#cbd5e1"))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
         with col2:
             numeric_cols = df.select_dtypes(include=['number']).columns
@@ -342,7 +350,7 @@ if 'df' in st.session_state:
 
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("Dataset View"):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
     else:
         st.markdown("<p style='color: #64748b; font-style: italic;'>Upload a CSV and click Generate Edition.</p></div>", unsafe_allow_html=True)
 
