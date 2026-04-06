@@ -143,81 +143,58 @@ def build_markdown_report(headline, insights, discoveries, outlook, df, is_sampl
 
 # --- PDF Export ---
 def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
+    def clean(text):
+        return str(text).encode("latin-1", "replace").decode("latin-1")
+
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Title
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.set_text_color(15, 23, 42)
-    pdf.multi_cell(0, 10, headline, align="L")
-    pdf.ln(4)
+    pdf.set_font("Helvetica", "B", 24)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(0, 20, "GAZETTE", ln=True, align="C")
+    
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(59, 130, 246)
+    pdf.multi_cell(0, 10, clean(headline), align="L")
+    pdf.ln(5)
 
-    pdf.set_draw_color(59, 130, 246)
-    pdf.set_line_width(0.8)
+    pdf.set_draw_color(226, 232, 240)
+    pdf.set_line_width(0.5)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(6)
+    pdf.ln(10)
 
-    # Insights
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 8, "Executive Insights", ln=True)
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(71, 85, 105)
-    pdf.multi_cell(0, 6, insights)
-    pdf.ln(4)
+    pdf.cell(0, 8, "EXECUTIVE INSIGHTS", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(30, 41, 59)
+    pdf.multi_cell(0, 6, clean(insights))
+    pdf.ln(8)
 
-    # Discoveries
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 8, "Key Discoveries", ln=True)
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font("Helvetica", "B", 12)
     pdf.set_text_color(71, 85, 105)
+    pdf.cell(0, 8, "STATISTICAL DISCOVERIES", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(30, 41, 59)
     for d in discoveries:
         if d:
-            pdf.multi_cell(0, 6, f"  - {d}")
-    pdf.ln(4)
-
-    # Outlook
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 8, "Outlook", ln=True)
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.set_text_color(100, 116, 139)
-    pdf.multi_cell(0, 6, outlook)
+            pdf.multi_cell(0, 7, f"  - {clean(d)}")
     pdf.ln(6)
 
-    # Dataset metadata
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(148, 163, 184)
-    sampled_note = " (sampled)" if is_sampled else ""
-    pdf.cell(0, 6, f"Dataset: {len(df)} rows x {len(df.columns)} columns{sampled_note}", ln=True)
-    pdf.ln(4)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(71, 85, 105)
+    pdf.cell(0, 8, "STRATEGIC OUTLOOK", ln=True)
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.set_text_color(100, 116, 139)
+    pdf.multi_cell(0, 6, clean(outlook))
+    pdf.ln(10)
 
-    # Data preview table
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.set_text_color(30, 41, 59)
-    pdf.cell(0, 7, "Data Preview (first 20 rows)", ln=True)
     pdf.set_font("Helvetica", "", 8)
-    preview = df.head(20)
-    col_width = min(190 / max(len(preview.columns), 1), 40)
-
-    # Header row
-    pdf.set_fill_color(30, 41, 59)
-    pdf.set_text_color(248, 250, 252)
-    for col in preview.columns:
-        pdf.cell(col_width, 6, str(col)[:18], border=0, fill=True)
-    pdf.ln()
-
-    # Data rows
-    pdf.set_fill_color(248, 250, 252)
-    pdf.set_text_color(51, 65, 85)
-    for i, row in preview.iterrows():
-        fill = (i % 2 == 0)
-        for val in row:
-            pdf.cell(col_width, 5, str(val)[:18], border=0, fill=fill)
-        pdf.ln()
-
+    pdf.set_text_color(148, 163, 184)
+    sampled_note = " (sampled for performance)" if is_sampled else ""
+    pdf.cell(0, 6, f"Infrastructure: {len(df)} rows x {len(df.columns)} columns {sampled_note}", ln=True, align="R")
+    
     return bytes(pdf.output())
 
 
@@ -238,12 +215,11 @@ with st.sidebar:
         if is_sampled:
             st.warning(f"Large file ({file_size_mb:.1f} MB). Analyzing a {len(df)}-row sample.")
         else:
-            st.info(f"Loaded {len(df)} rows and {len(df.columns)} columns.")
+            st.info(f"Loaded {len(df)} rows.")
 
     st.markdown("---")
     st.markdown("### Export")
 
-    # Markdown download (always available after generation)
     if 'markdown_report' in st.session_state:
         st.download_button(
             label="Download Report (.md)",
@@ -253,7 +229,6 @@ with st.sidebar:
             key="md_download_btn"
         )
 
-    # Real PDF download
     if 'pdf_report' in st.session_state:
         st.download_button(
             label="Download Report (.pdf)",
@@ -279,7 +254,6 @@ if 'df' in st.session_state:
     if 'editorial' in st.session_state:
         editorial = st.session_state.editorial
 
-        # Parse tagged output
         parts = editorial.split('[')
         content = {}
         for p in parts:
@@ -299,7 +273,7 @@ if 'df' in st.session_state:
         ]
         outlook = content.get('OUTLOOK', '')
 
-        # Build and cache markdown + PDF reports
+        # Cache reports
         st.session_state.markdown_report = build_markdown_report(
             headline, insights, discoveries, outlook, df, is_sampled
         )
@@ -307,12 +281,10 @@ if 'df' in st.session_state:
             headline, insights, discoveries, outlook, df, is_sampled
         )
 
-        # Layout
         st.markdown(f"<h1 style='font-size:2.2rem; margin-bottom: 0px; color: #ffffff; font-weight: 700;'>{headline}</h1>", unsafe_allow_html=True)
         st.markdown("<hr style='border: 0; height: 1px; background: #334155; margin-top:1.5rem; margin-bottom: 2rem;'/>", unsafe_allow_html=True)
         st.markdown(f'<div class="editorial-text">{insights}</div>', unsafe_allow_html=True)
 
-        # Discoveries
         if any(discoveries):
             st.markdown("<h3 style='margin-top: 2rem; color: #f8fafc;'>Key Discoveries</h3>", unsafe_allow_html=True)
             for d in discoveries:
