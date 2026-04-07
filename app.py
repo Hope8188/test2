@@ -245,16 +245,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Export")
 
-    if 'markdown_report' in st.session_state:
-        st.download_button(
-            label="Download Report (.md)",
-            data=st.session_state.markdown_report,
-            file_name="gazette_report.md",
-            mime="text/markdown",
-            key="md_download_btn",
-            use_container_width=True
-        )
-
     if 'pdf_report' in st.session_state:
         st.download_button(
             label="Download Report (.pdf)",
