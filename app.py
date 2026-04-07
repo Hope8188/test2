@@ -173,6 +173,8 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_left_margin(15)
+    pdf.set_right_margin(15)
 
     pdf.set_font("Helvetica", "B", 24)
     pdf.set_text_color(30, 41, 59)
@@ -180,12 +182,12 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     
     pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(59, 130, 246)
-    pdf.multi_cell(190, 10, clean(headline), align="L")
+    pdf.multi_cell(180, 10, clean(headline), align="L")
     pdf.ln(5)
 
     pdf.set_draw_color(226, 232, 240)
     pdf.set_line_width(0.5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(10)
 
     pdf.set_font("Helvetica", "B", 12)
@@ -193,7 +195,7 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     pdf.cell(0, 8, "EXECUTIVE INSIGHTS", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(30, 41, 59)
-    pdf.multi_cell(190, 6, clean(insights))
+    pdf.multi_cell(180, 6, clean(insights))
     pdf.ln(8)
 
     pdf.set_font("Helvetica", "B", 12)
@@ -203,7 +205,7 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     pdf.set_text_color(30, 41, 59)
     for d in discoveries:
         if d:
-            pdf.multi_cell(190, 7, f"  - {clean(d)}")
+            pdf.multi_cell(180, 7, f"- {clean(d)}")
     pdf.ln(6)
 
     pdf.set_font("Helvetica", "B", 12)
@@ -211,7 +213,7 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
     pdf.cell(0, 8, "STRATEGIC OUTLOOK", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "I", 10)
     pdf.set_text_color(100, 116, 139)
-    pdf.multi_cell(190, 6, clean(outlook))
+    pdf.multi_cell(180, 6, clean(outlook))
     pdf.ln(10)
 
     pdf.set_font("Helvetica", "", 8)
