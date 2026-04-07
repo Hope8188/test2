@@ -308,9 +308,11 @@ if 'df' in st.session_state:
              insights = editorial.strip()[:500] + "..." if len(editorial) > 500 else editorial.strip()
 
         # Cache reports
-        st.session_state.pdf_report = build_pdf_report(
-            headline, insights, discoveries, outlook, df, is_sampled
-        )
+        pdf_output = build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled)
+        # Convert bytearray to bytes for Streamlit compatibility
+        if isinstance(pdf_output, bytearray):
+            pdf_output = bytes(pdf_output)
+        st.session_state.pdf_report = pdf_output
         
         # Build markdown report
         md_content = f"""# {headline}
