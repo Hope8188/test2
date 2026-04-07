@@ -229,19 +229,6 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
 st.markdown('<div class="magazine-header">GAZETTE</div>', unsafe_allow_html=True)
 st.markdown("<p style='font-size: 1.2rem; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase;'>The Data Brief</p>", unsafe_allow_html=True)
 
-# Sidebar - Export only
-with st.sidebar:
-    st.markdown("### Export")
-    if 'pdf_report' in st.session_state:
-        st.download_button(
-            label="Download Report (.pdf)",
-            data=st.session_state.pdf_report,
-            file_name="gazette_report.pdf",
-            mime="application/pdf",
-            key="pdf_download_btn",
-            use_container_width=True
-        )
-
 # Main content area
 if 'df' not in st.session_state:
     # Show upload in main area for mobile accessibility
@@ -341,7 +328,21 @@ else:
 
         if outlook:
             st.markdown(f"<p style='margin-top:1.5rem; color:#64748b; font-style:italic;'>{outlook}</p>", unsafe_allow_html=True)
-
+        
+        # Download button centered below content
+        if 'pdf_report' in st.session_state:
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_dl1, col_dl2, col_dl3 = st.columns([1, 2, 1])
+            with col_dl2:
+                st.download_button(
+                    label="Download Report (.pdf)",
+                    data=st.session_state.pdf_report,
+                    file_name="gazette_report.pdf",
+                    mime="application/pdf",
+                    key="pdf_download_btn",
+                    use_container_width=True
+                )
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
         # Visualizations
