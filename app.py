@@ -229,24 +229,9 @@ def build_pdf_report(headline, insights, discoveries, outlook, df, is_sampled):
 st.markdown('<div class="magazine-header">GAZETTE</div>', unsafe_allow_html=True)
 st.markdown("<p style='font-size: 1.2rem; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase;'>The Data Brief</p>", unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar - Export only
 with st.sidebar:
-    st.markdown("## Configuration")
-    uploaded_file = st.file_uploader("Drop your data (.csv)", type=["csv"])
-
-    if uploaded_file:
-        df, file_size_mb, is_sampled = load_data(uploaded_file)
-        st.session_state.df = df
-        st.session_state.is_sampled = is_sampled
-        st.success("Data uploaded successfully.")
-        if is_sampled:
-            st.warning(f"Large file ({file_size_mb:.1f} MB). Analyzing a {len(df)}-row sample.")
-        else:
-            st.info(f"Loaded {len(df)} rows.")
-
-    st.markdown("---")
     st.markdown("### Export")
-
     if 'pdf_report' in st.session_state:
         st.download_button(
             label="Download Report (.pdf)",
@@ -257,12 +242,29 @@ with st.sidebar:
             use_container_width=True
         )
 
-
-# --- Main Content ---
-if 'df' in st.session_state:
+# Main content area
+if 'df' not in st.session_state:
+    # Show upload in main area for mobile accessibility
+    st.markdown('<div class="magazine-card">', unsafe_allow_html=True)
+    st.markdown("<h2 style='font-size: 1.5rem; margin-bottom: 1rem; color: #ffffff;'>Upload Your Data</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; margin-bottom: 1.5rem;'>Drop a CSV file to begin analysis.</p>", unsafe_allow_html=True)
+    
+    uploaded_file = st.file_uploader("Drop your data (.csv)", type=["csv"], label_visibility="collapsed")
+    
+    if uploaded_file:
+        df, file_size_mb, is_sampled = load_data(uploaded_file)
+        st.session_state.df = df
+        st.session_state.is_sampled = is_sampled
+        st.success(f"Data uploaded successfully. Loaded {len(df)} rows.")
+        if is_sampled:
+            st.warning(f"Large file ({file_size_mb:.1f} MB). Analyzing a {len(df)}-row sample.")
+        st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+else:
     df = st.session_state.df
     is_sampled = st.session_state.is_sampled
-
+    
     st.markdown('<div class="magazine-card">', unsafe_allow_html=True)
 
     if st.button("Generate Edition", key="generate_btn"):
@@ -390,12 +392,4 @@ if 'df' in st.session_state:
         with st.expander("Dataset View"):
             st.dataframe(df, width='stretch')
     else:
-        st.markdown("<p style='color: #64748b; font-style: italic;'>Upload a CSV and click Generate Edition.</p></div>", unsafe_allow_html=True)
-
-else:
-    st.markdown("""
-    <div class="magazine-card" style="text-align: left; padding: 3rem 2rem;">
-        <h2 style="font-size: 2rem; margin-bottom: 1rem; color: #ffffff;">Workspace Idle</h2>
-        <p style="color: #94a3b8; font-size: 1.1rem; line-height: 1.6;">Upload a CSV via the configuration panel to begin analysis.</p>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b; font-style: italic;'>Click 'Generate Edition' to analyze your data.</p></div>", unsafe_allow_html=True)
