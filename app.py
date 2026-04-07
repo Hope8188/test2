@@ -25,6 +25,11 @@ try:
 except Exception:
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+try:
+    GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY"))
+except Exception:
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 SITE_URL = "http://localhost:8501"
 SITE_NAME = "Gazette"
 LARGE_FILE_THRESHOLD_MB = 10
@@ -133,6 +138,24 @@ Rules:
                 if attempt < 4:
                     time.sleep(2)
                 continue
+
+    # Try Google AI Studio as final fallback
+    if GEMINI_API_KEY:
+        try:
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+            gemini_payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
+            gemini_response = requests.post(gemini_url, json=gemini_payload, timeout=30)
+            if gemini_response.status_code == 200:
+                result = gemini_response.json()
+                return result['candidates'][0]['content']['parts'][0]['text']
+            else:
+                last_error = f"Gemini: {gemini_response.status_code}"
+        except Exception as e:
+            last_error = f"Gemini error: {str(e)}"
 
     return f"[HEADLINE] Generation Failed\n[INSIGHTS] All models rate-limited. Last error: {last_error}"
 
